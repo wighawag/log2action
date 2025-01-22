@@ -5,6 +5,53 @@ import {sqlToStatements} from './utils.js';
 import dropTables from '../schema/ts/drop.sql.js';
 import {Abi, LastSync} from 'ethereum-indexer';
 
+// TODO have a base utils lib
+function bnReplacer(v: any): any {
+	if (typeof v === 'bigint') {
+		return v.toString() + 'n';
+	} else {
+		if (typeof v === 'object') {
+			if (Array.isArray(v)) {
+				return v.map((v) => bnReplacer(v));
+			} else {
+				const keys = Object.keys(v);
+				const n = {};
+				for (const key of keys) {
+					(n as any)[key] = bnReplacer(v[key]);
+				}
+				return n;
+			}
+		} else {
+			return v;
+		}
+	}
+}
+
+function bnReviver(v: any): any {
+	if (
+		typeof v === 'string' &&
+		(v.startsWith('-') ? !isNaN(parseInt(v.charAt(1))) : !isNaN(parseInt(v.charAt(0)))) &&
+		v.charAt(v.length - 1) === 'n'
+	) {
+		return BigInt(v.slice(0, -1));
+	} else {
+		if (typeof v === 'object') {
+			if (Array.isArray(v)) {
+				return v.map((v) => bnReviver(v));
+			} else {
+				const keys = Object.keys(v);
+				const n = {};
+				for (const key of keys) {
+					(n as any)[key] = bnReviver(v[key]);
+				}
+				return n;
+			}
+		} else {
+			return v;
+		}
+	}
+}
+
 export class RemoteSQLStorage implements Storage {
 	constructor(private db: RemoteSQL) {}
 
@@ -13,7 +60,7 @@ export class RemoteSQLStorage implements Storage {
 		 VALUES(?1, ?2) ON CONFLICT(questGroupID) DO UPDATE SET
 		 lastSync=excluded.lastSync;`;
 		const statement = this.db.prepare(sqlStatement);
-		await statement.bind(questGroupID, JSON.stringify(lastSync)).all();
+		await statement.bind(questGroupID, JSON.stringify(lastSync, bnReplacer)).all();
 	}
 	async loadLastSync<ABI extends Abi>(questGroupID: string): Promise<LastSync<ABI> | undefined> {
 		const statement = this.db.prepare(`SELECT * FROM SyncingStatus WHERE questGroupID = ?1;`);
@@ -21,7 +68,7 @@ export class RemoteSQLStorage implements Storage {
 		if (results.length === 0) {
 			return undefined;
 		} else {
-			return JSON.parse(results[0].lastSync);
+			return JSON.parse(results[0].lastSync, bnReviver);
 		}
 	}
 

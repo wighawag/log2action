@@ -6,7 +6,7 @@ interface RequestData {
 }
 
 interface ResponseData {
-	success: boolean;
+	status: 'success' | 'error'; // TODO error ?
 }
 
 export async function fullfillQuest(env: Env, data: RequestData): Promise<ResponseData> {

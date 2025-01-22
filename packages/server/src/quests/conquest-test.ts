@@ -689,9 +689,9 @@ class Processor implements EventProcessor<MyABI, {}> {
 		source: IndexingSource<MyABI>,
 		streamConfig: UsedStreamConfig,
 	): Promise<{state: {}; lastSync: LastSync<MyABI>} | undefined> {
-		const lastSync = await this.db.loadLastSync(this.questGroupID);
-		// TODO if we remove this, we can track even for account who did not register with gg.xyz
-		// but this might be too much to index at some point
+		// We are not loading so we always start from beginning to solve gg.xyz issue of not taking into consideration action when account is not already existing
+		const lastSync = undefined; //await this.db.loadLastSync(this.questGroupID);
+
 		return lastSync ? {state: {}, lastSync} : undefined;
 	}
 	async process(eventStream: LogEvent<MyABI>[], lastSync: LastSync<MyABI>): Promise<{}> {
@@ -701,12 +701,15 @@ class Processor implements EventProcessor<MyABI, {}> {
 				// TODO typesafe
 				if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
 					const args = logEvent.args as any;
-					console.log(args.acquirer);
-					await fullfillQuest(this.env, {
+					const playerAddress = args.acquirer;
+					const result = await fullfillQuest(this.env, {
 						actions: ['Kill zombie'],
-						playerAddress: args.acquirer,
+						playerAddress,
 					});
-					return true;
+					console.log(result);
+					const {status} = result;
+					console.log({status, tx: logEvent.transactionHash, logIndex: logEvent.logIndex, playerAddress});
+					return status === 'success';
 				}
 				return false;
 			});
