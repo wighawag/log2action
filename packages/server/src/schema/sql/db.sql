@@ -1,11 +1,12 @@
 CREATE TABLE IF NOT EXISTS Actions (
-    id text NULL,
+    questGroupID text NULL,
+    actionID text NULL,
     timestamp timestamp NULL,
-    PRIMARY KEY (id)
+    PRIMARY KEY (questGroupID, actionID)
 );
 
 CREATE TABLE IF NOT EXISTS SyncingStatus (
-    id text NULL,
+    questGroupID text NULL,
     lastSync text NULL,
-    PRIMARY KEY (id)
+    PRIMARY KEY (questGroupID)
 );

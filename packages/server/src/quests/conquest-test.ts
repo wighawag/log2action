@@ -677,7 +677,7 @@ type MyABI = typeof abi;
 class Processor implements EventProcessor<MyABI, {}> {
 	constructor(
 		public env: Env,
-		public id: string,
+		public questGroupID: string,
 		public source: IndexingSource<MyABI>,
 		public db: Storage,
 	) {}
@@ -689,13 +689,15 @@ class Processor implements EventProcessor<MyABI, {}> {
 		source: IndexingSource<MyABI>,
 		streamConfig: UsedStreamConfig,
 	): Promise<{state: {}; lastSync: LastSync<MyABI>} | undefined> {
-		const lastSync = await this.db.loadLastSync(this.id);
+		const lastSync = await this.db.loadLastSync(this.questGroupID);
+		// TODO if we remove this, we can track even for account who did not register with gg.xyz
+		// but this might be too much to index at some point
 		return lastSync ? {state: {}, lastSync} : undefined;
 	}
 	async process(eventStream: LogEvent<MyABI>[], lastSync: LastSync<MyABI>): Promise<{}> {
 		for (const logEvent of eventStream) {
-			const id = `${logEvent.transactionHash}_${logEvent.logIndex}`;
-			await unlessActionAlreadyRecorded(this.db, id, async () => {
+			const actionID = `${logEvent.transactionHash}_${logEvent.logIndex}`;
+			await unlessActionAlreadyRecorded(this.db, this.questGroupID, actionID, async () => {
 				// TODO typesafe
 				if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
 					const args = logEvent.args as any;
@@ -709,7 +711,7 @@ class Processor implements EventProcessor<MyABI, {}> {
 				return false;
 			});
 		}
-		await this.db.saveLastSync(this.id, lastSync);
+		await this.db.saveLastSync(this.questGroupID, lastSync);
 		return {};
 	}
 	async reset(): Promise<void> {}

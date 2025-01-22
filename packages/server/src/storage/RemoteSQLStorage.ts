@@ -8,16 +8,16 @@ import {Abi, LastSync} from 'ethereum-indexer';
 export class RemoteSQLStorage implements Storage {
 	constructor(private db: RemoteSQL) {}
 
-	async saveLastSync<ABI extends Abi>(id: string, lastSync: LastSync<ABI>): Promise<void> {
-		const sqlStatement = `INSERT INTO SyncingStatus (id, lastSync) 
-		 VALUES(?1, ?2) ON CONFLICT(id) DO UPDATE SET
+	async saveLastSync<ABI extends Abi>(questGroupID: string, lastSync: LastSync<ABI>): Promise<void> {
+		const sqlStatement = `INSERT INTO SyncingStatus (questGroupID, lastSync) 
+		 VALUES(?1, ?2) ON CONFLICT(questGroupID) DO UPDATE SET
 		 lastSync=excluded.lastSync;`;
 		const statement = this.db.prepare(sqlStatement);
-		await statement.bind(id, JSON.stringify(lastSync)).all();
+		await statement.bind(questGroupID, JSON.stringify(lastSync)).all();
 	}
-	async loadLastSync<ABI extends Abi>(id: string): Promise<LastSync<ABI> | undefined> {
-		const statement = this.db.prepare(`SELECT * FROM SyncingStatus WHERE id = ?1;`);
-		const {results} = await statement.bind(id).all<{lastSync: string}>();
+	async loadLastSync<ABI extends Abi>(questGroupID: string): Promise<LastSync<ABI> | undefined> {
+		const statement = this.db.prepare(`SELECT * FROM SyncingStatus WHERE questGroupID = ?1;`);
+		const {results} = await statement.bind(questGroupID).all<{lastSync: string}>();
 		if (results.length === 0) {
 			return undefined;
 		} else {
@@ -25,14 +25,14 @@ export class RemoteSQLStorage implements Storage {
 		}
 	}
 
-	async recordAction(id: string): Promise<void> {
-		const sqlStatement = `INSERT INTO Actions (id, timestamp) VALUES(?1, UNIXEPOCH());`;
+	async recordAction(questGroupID: string, actionID: string): Promise<void> {
+		const sqlStatement = `INSERT INTO Actions (questGroupID, actionID, timestamp) VALUES(?1, ?2, UNIXEPOCH());`;
 		const statement = this.db.prepare(sqlStatement);
-		await statement.bind(id).all();
+		await statement.bind(questGroupID, actionID).all();
 	}
-	async isActionRecorded(id: string): Promise<boolean> {
-		const statement = this.db.prepare(`SELECT * FROM Actions WHERE id = ?1;`);
-		const {results} = await statement.bind(id).all<{lastSync: string}>();
+	async isActionRecorded(questGroupID: string, actionID: string): Promise<boolean> {
+		const statement = this.db.prepare(`SELECT * FROM Actions WHERE questGroupID = ?1 AND actionID = ?2;`);
+		const {results} = await statement.bind(questGroupID, actionID).all<{lastSync: string}>();
 		if (results.length === 0) {
 			return false;
 		} else {
