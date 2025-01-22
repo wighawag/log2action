@@ -1,0 +1,13 @@
+name = "log2action-cf-worker"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+
+compatibility_flags = [ "nodejs_compat" ] # for node:async_hooks
+
+[observability.logs]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "log2action-db"
+database_id = "06cd5aec-2474-4b12-bdc9-248c15fd7444"
