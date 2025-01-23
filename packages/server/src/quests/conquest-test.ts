@@ -1,6 +1,6 @@
 import {EventProcessor, IndexingSource, LastSync, LogEvent, UsedStreamConfig} from 'ethereum-indexer';
 import {unlessActionAlreadyRecorded} from './utilts.js';
-import {fullfillQuest} from '../gg/index.js';
+import {GG} from '../gg/index.js';
 import {Env} from '../env.js';
 
 const abi = [
@@ -675,12 +675,16 @@ const abi = [
 type MyABI = typeof abi;
 
 class Processor implements EventProcessor<MyABI, {}> {
+	public gg: GG;
+
 	constructor(
 		public env: Env,
 		public questGroupID: string,
 		public source: IndexingSource<MyABI>,
 		public db: Storage,
-	) {}
+	) {
+		this.gg = new GG(env);
+	}
 
 	getVersionHash(): string {
 		return 'my-processor';
@@ -702,7 +706,14 @@ class Processor implements EventProcessor<MyABI, {}> {
 				if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
 					const args = logEvent.args as any;
 					const playerAddress = args.acquirer;
-					const result = await fullfillQuest(this.env, {
+
+					const hasProfile = await this.gg.hasGGProfile(playerAddress);
+
+					if (!hasProfile) {
+						console.log(`no GG profile for ${playerAddress}`);
+						return false;
+					}
+					const result = await this.gg.fullfillQuest({
 						actions: ['Kill zombie'],
 						playerAddress,
 					});
