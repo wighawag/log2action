@@ -20,6 +20,7 @@
     "format:check": "prettier --check . && pnpm -r format:check",
     "---------------------- DEV ----------------------": "",
     "cf-worker:dev": "pnpm --filter log2action-server-cf-worker dev",
+    "nodejs:dev": "pnpm --filter log2action-server-nodejs dev",
     "server:dev": "pnpm --filter log2action-server dev",
     "common:dev": "pnpm --filter log2action-common dev",
     "---------------------- DEPLOY ----------------------": "",
