@@ -674,8 +674,11 @@ const abi = [
 
 type MyABI = typeof abi;
 
+type State = {planets: {[location: string]: {active: boolean}}};
+
 class Processor implements EventProcessor<MyABI, {}> {
 	public gg: GG;
+	public state: State;
 
 	constructor(
 		public env: Env,
@@ -684,6 +687,7 @@ class Processor implements EventProcessor<MyABI, {}> {
 		public db: Storage,
 	) {
 		this.gg = new GG(env);
+		this.state = {planets: {}};
 	}
 
 	getVersionHash(): string {
@@ -692,35 +696,85 @@ class Processor implements EventProcessor<MyABI, {}> {
 	async load(
 		source: IndexingSource<MyABI>,
 		streamConfig: UsedStreamConfig,
-	): Promise<{state: {}; lastSync: LastSync<MyABI>} | undefined> {
+	): Promise<{state: State; lastSync: LastSync<MyABI>} | undefined> {
 		// We are not loading so we always start from beginning to solve gg.xyz issue of not taking into consideration action when account is not already existing
 		const lastSync = undefined; //await this.db.loadLastSync(this.questGroupID);
 
-		return lastSync ? {state: {}, lastSync} : undefined;
+		return lastSync ? {state: {planets: {}}, lastSync} : undefined;
 	}
+
+	// async ensureProfileExist(playerAddress: string, func: () => Promise<boolean>): Promise<boolean> {
+	// 	const hasProfile = await this.gg.hasGGProfile(playerAddress);
+
+	// 	if (!hasProfile) {
+	// 		console.log(`no GG profile for ${playerAddress}`);
+	// 		return false;
+	// 	}
+	// 	return func();
+	// }
+
+	async testAndFulfillQuest(playerAddress: string, actions: string[], test?: () => Promise<boolean>): Promise<boolean> {
+		const hasProfile = await this.gg.hasGGProfile(playerAddress);
+
+		if (!hasProfile) {
+			console.log(`no GG profile for ${playerAddress}`);
+			return false;
+		}
+
+		// if (!test || (await test())) {
+		// 	const result = await this.gg.fullfillQuest({
+		// 		actions,
+		// 		playerAddress,
+		// 	});
+		// 	console.log(result);
+		// 	const {status} = result;
+		// 	console.log({status, playerAddress});
+		// 	return status === 'success';
+		// } else {
+		// 	console.log(`do not apply`);
+		// 	return true;
+		// }
+
+		console.log(playerAddress, actions[0]);
+		return false;
+	}
+
 	async process(eventStream: LogEvent<MyABI>[], lastSync: LastSync<MyABI>): Promise<{}> {
 		for (const logEvent of eventStream) {
 			const actionID = `${logEvent.transactionHash}_${logEvent.logIndex}`;
+			if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
+				const args = logEvent.args as any;
+				this.state.planets[args.location] = {
+					active: true,
+				};
+				// console.log(`planet active: ${args.location}`);
+			} else if ('eventName' in logEvent && logEvent.eventName === 'ExitComplete' && 'args' in logEvent) {
+				const args = logEvent.args as any;
+				this.state.planets[args.location] = {
+					active: false,
+				};
+				// console.log(`planet exited: ${args.location}`);
+			}
 			await unlessActionAlreadyRecorded(this.db, this.questGroupID, actionID, async () => {
 				// TODO typesafe
 				if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
 					const args = logEvent.args as any;
 					const playerAddress = args.acquirer;
-
-					const hasProfile = await this.gg.hasGGProfile(playerAddress);
-
-					if (!hasProfile) {
-						console.log(`no GG profile for ${playerAddress}`);
-						return false;
+					return this.testAndFulfillQuest(playerAddress, ['Planet Stake']);
+				} else if ('eventName' in logEvent && logEvent.eventName === 'FleetSent' && 'args' in logEvent) {
+					const args = logEvent.args as any;
+					const playerAddress = args.fleetSender;
+					return this.testAndFulfillQuest(playerAddress, ['Fleet Send']);
+				} else if ('eventName' in logEvent && logEvent.eventName === 'FleetArrived' && 'args' in logEvent) {
+					const args = logEvent.args as any;
+					const playerAddress = args.fleetOwner;
+					const planet = this.state.planets[args.destination];
+					if (args.won && planet?.active) {
+						return this.testAndFulfillQuest(playerAddress, [`Fleet Conquered planet ${args.destination}`]);
+					} else {
+						// return this.testAndFulfillQuest(playerAddress, [`Fleet Conquered ab inactive planet ${args.destination}`]);
+						return false; // TODO true if we want to block
 					}
-					const result = await this.gg.fullfillQuest({
-						actions: ['Kill zombie'],
-						playerAddress,
-					});
-					console.log(result);
-					const {status} = result;
-					console.log({status, tx: logEvent.transactionHash, logIndex: logEvent.logIndex, playerAddress});
-					return status === 'success';
 				}
 				return false;
 			});
@@ -737,8 +791,8 @@ export const ConquestTestQuests = {
 	contracts: [
 		{
 			abi,
-			startBlock: 38138325,
-			address: '0xb63b48B6Ad0150B1Bd014495e53CfbF8a27bd228',
+			startBlock: 38273694,
+			address: '0xEd16fDb2191C56094911675DE634c1af36f8e9AB',
 		},
 	],
 	processorFactory: (env: Env, id: string, source: IndexingSource<MyABI>, db: Storage) =>
