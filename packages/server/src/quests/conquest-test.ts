@@ -728,22 +728,19 @@ class Processor implements EventProcessor<MyABI, {}> {
 			return false;
 		}
 
-		// if (!test || (await test())) {
-		// 	const result = await this.gg.fullfillQuest({
-		// 		actions,
-		// 		playerAddress,
-		// 	});
-		// 	console.log(result);
-		// 	const {status} = result;
-		// 	console.log({status, playerAddress});
-		// 	return status === 'success';
-		// } else {
-		// 	console.log(`do not apply`);
-		// 	return true;
-		// }
-
-		console.log(playerAddress, actions[0]);
-		return false;
+		if (!test || (await test())) {
+			const result = await this.gg.fullfillQuest({
+				actions,
+				playerAddress,
+			});
+			console.log(result);
+			const {status} = result;
+			console.log({status, playerAddress});
+			return status === 'success';
+		} else {
+			console.log(`do not apply`);
+			return true;
+		}
 	}
 
 	async process(eventStream: LogEvent<MyABI>[], lastSync: LastSync<MyABI>): Promise<{}> {
@@ -789,22 +786,23 @@ class Processor implements EventProcessor<MyABI, {}> {
 				if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
 					const args = logEvent.args as any;
 					const playerAddress = args.acquirer;
-					return this.testAndFulfillQuest(playerAddress, ['Planet Stake']);
-				} else if ('eventName' in logEvent && logEvent.eventName === 'FleetSent' && 'args' in logEvent) {
-					const args = logEvent.args as any;
-					const playerAddress = args.fleetSender;
-					return this.testAndFulfillQuest(playerAddress, ['Fleet Send']);
-				} else if ('eventName' in logEvent && logEvent.eventName === 'FleetArrived' && 'args' in logEvent) {
-					const args = logEvent.args as any;
-					const playerAddress = args.fleetOwner;
-					const planet = this.state.planets[args.destination];
-					if (args.won && planet?.active) {
-						return this.testAndFulfillQuest(playerAddress, [`Fleet Conquered planet ${args.destination}`]);
-					} else {
-						// return this.testAndFulfillQuest(playerAddress, [`Fleet Conquered ab inactive planet ${args.destination}`]);
-						return false; // TODO true if we want to block
-					}
+					return this.testAndFulfillQuest(playerAddress, ['Kill Zombie']);
 				}
+				// else if ('eventName' in logEvent && logEvent.eventName === 'FleetSent' && 'args' in logEvent) {
+				// 	const args = logEvent.args as any;
+				// 	const playerAddress = args.fleetSender;
+				// 	return this.testAndFulfillQuest(playerAddress, ['Kill Zombie']);
+				// } else if ('eventName' in logEvent && logEvent.eventName === 'FleetArrived' && 'args' in logEvent) {
+				// 	const args = logEvent.args as any;
+				// 	const playerAddress = args.fleetOwner;
+				// 	const planet = this.state.planets[args.destination];
+				// 	if (args.won && planet?.active) {
+				// 		return this.testAndFulfillQuest(playerAddress, [`Kill Zombie`]);
+				// 	} else {
+				// 		// return this.testAndFulfillQuest(playerAddress, [`Fleet Conquered ab inactive planet ${args.destination}`]);
+				// 		return false; // TODO true if we want to block
+				// 	}
+				// }
 				return false;
 			});
 		}
