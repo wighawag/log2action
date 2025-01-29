@@ -32,13 +32,15 @@ async function main() {
 		.option(
 			'-i, --process-interval <interval>',
 			'number of seconds between each processQueue/. set it to zero to cancel it',
-		);
+		)
+		.option('--setup');
 
 	program.parse(process.argv);
 
 	type Options = {
 		port?: string;
 		processInterval?: string;
+		setup: boolean;
 	};
 
 	const options: Options = program.opts();
@@ -60,10 +62,10 @@ async function main() {
 		getEnv: () => env,
 	});
 
-	if (db === ':memory:') {
+	if (db === ':memory:' || options?.setup) {
 		console.log(`executing setup...`);
 		await app.fetch(
-			new Request('http://localhost/admin/setup', {
+			new Request('http://localhost/internal/setup?_initDB=true', {
 				headers: {
 					Authorization: `Basic ${btoa(`admin:${TOKEN_ADMIN}`)}`,
 				},
