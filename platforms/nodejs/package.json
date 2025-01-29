@@ -34,6 +34,6 @@
     "dev": "tsx watch src/cli.ts --port 30042",
     "build": "tsc",
     "build:watch": "as-soon -w src tsc",
-    "build:run": "pnpm build && node dist/cli.js"
+    "start": "node dist/cli.js"
   }
 }
