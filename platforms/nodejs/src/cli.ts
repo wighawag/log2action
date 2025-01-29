@@ -71,9 +71,25 @@ async function main() {
 		);
 	}
 
-	function processQueueAndTransactions() {
+	let promise: Promise<Response> | undefined;
+	async function processQueueAndTransactions() {
+		if (promise) {
+			console.log(`still processing previous call...`);
+			return;
+		}
 		console.log(`-----------------------------------------------------------------------------------------`);
-		app.fetch(new Request('http://localhost/internal/process/ConquestTestQuests'));
+		try {
+			const res = app.fetch(new Request('http://localhost/internal/process/ConquestTestQuests'));
+			if (res instanceof Promise) {
+				promise = res;
+			} else {
+				promise = Promise.resolve(res);
+			}
+			await promise;
+		} finally {
+			promise = undefined;
+		}
+
 		console.log(`-----------------------------------------------------------------------------------------`);
 	}
 
