@@ -786,7 +786,7 @@ class Processor implements EventProcessor<MyABI, {}> {
 				if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
 					const args = logEvent.args as any;
 					const playerAddress = args.acquirer;
-					return this.testAndFulfillQuest(playerAddress, ['Kill Zombie']);
+					return this.testAndFulfillQuest(playerAddress, ['Kill zombie']);
 				}
 				// else if ('eventName' in logEvent && logEvent.eventName === 'FleetSent' && 'args' in logEvent) {
 				// 	const args = logEvent.args as any;
