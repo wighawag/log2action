@@ -79,6 +79,7 @@ async function main() {
 
 	let runningInterval;
 	if (processInterval > 0) {
+		processQueueAndTransactions();
 		runningInterval = setInterval(processQueueAndTransactions, processInterval * 1000);
 	}
 
