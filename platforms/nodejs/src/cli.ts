@@ -28,16 +28,22 @@ async function main() {
 		.version(pkg.version)
 		.usage(`log2action-server-nodejs [--port 2000] [--sql <sql-folder>]`)
 		.description('run log2action-server-nodejs as a node process')
-		.option('-p, --port <port>');
+		.option('-p, --port <port>')
+		.option(
+			'-i, --process-interval <interval>',
+			'number of seconds between each processQueue/. set it to zero to cancel it',
+		);
 
 	program.parse(process.argv);
 
 	type Options = {
 		port?: string;
+		processInterval?: string;
 	};
 
 	const options: Options = program.opts();
 	const port = options.port ? parseInt(options.port) : 2000;
+	const processInterval = options.processInterval ? parseInt(options.processInterval) : 300;
 
 	const env = process.env as NodeJSEnv;
 
@@ -63,6 +69,15 @@ async function main() {
 				},
 			}),
 		);
+	}
+
+	function processQueueAndTransactions() {
+		app.fetch(new Request('http://localhost/internal/process/ConquestTestQuests'));
+	}
+
+	let runningInterval;
+	if (processInterval > 0) {
+		runningInterval = setInterval(processQueueAndTransactions, processInterval * 1000);
 	}
 
 	serve({

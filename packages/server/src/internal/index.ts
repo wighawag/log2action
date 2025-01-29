@@ -74,7 +74,7 @@ export function getInternalAPI(options: ServerOptions) {
 			const options = {nodeUrl: nodeURL};
 			await init(options);
 			await run(options);
-			return c.json({success: true});
+			return c.json({success: true, state: processor.state});
 		})
 		.get('/setup', async (c) => {
 			return c.json({success: true});

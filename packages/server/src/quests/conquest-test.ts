@@ -674,7 +674,12 @@ const abi = [
 
 type MyABI = typeof abi;
 
-type State = {planets: {[location: string]: {active: boolean}}};
+type State = {
+	planets: {[location: string]: {active: boolean; stake: string}};
+	totalStaked: {[player: string]: string};
+	totalSpaceshipsSent: {[player: string]: number};
+	totalStakeCaptured: {[player: string]: string};
+};
 
 class Processor implements EventProcessor<MyABI, {}> {
 	public gg: GG;
@@ -687,7 +692,7 @@ class Processor implements EventProcessor<MyABI, {}> {
 		public db: Storage,
 	) {
 		this.gg = new GG(env);
-		this.state = {planets: {}};
+		this.state = {planets: {}, totalStaked: {}, totalSpaceshipsSent: {}, totalStakeCaptured: {}};
 	}
 
 	getVersionHash(): string {
@@ -700,7 +705,9 @@ class Processor implements EventProcessor<MyABI, {}> {
 		// We are not loading so we always start from beginning to solve gg.xyz issue of not taking into consideration action when account is not already existing
 		const lastSync = undefined; //await this.db.loadLastSync(this.questGroupID);
 
-		return lastSync ? {state: {planets: {}}, lastSync} : undefined;
+		return lastSync
+			? {state: {planets: {}, totalStaked: {}, totalSpaceshipsSent: {}, totalStakeCaptured: {}}, lastSync}
+			: undefined;
 	}
 
 	// async ensureProfileExist(playerAddress: string, func: () => Promise<boolean>): Promise<boolean> {
@@ -744,16 +751,38 @@ class Processor implements EventProcessor<MyABI, {}> {
 			const actionID = `${logEvent.transactionHash}_${logEvent.logIndex}`;
 			if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
 				const args = logEvent.args as any;
-				this.state.planets[args.location] = {
-					active: true,
-				};
-				// console.log(`planet active: ${args.location}`);
+				const playerAddress = args.acquirer;
+				this.state.totalStaked[playerAddress] = (
+					BigInt(this.state.totalStaked[playerAddress] || '0') + BigInt(args.stake)
+				).toString();
+				const planet = (this.state.planets[args.location] = this.state.planets[args.location] || {
+					active: false,
+					stake: '0',
+				});
+				planet.active = true;
+				planet.stake = BigInt(args.stake).toString();
 			} else if ('eventName' in logEvent && logEvent.eventName === 'ExitComplete' && 'args' in logEvent) {
 				const args = logEvent.args as any;
-				this.state.planets[args.location] = {
+				const planet = (this.state.planets[args.location] = this.state.planets[args.location] || {
 					active: false,
-				};
+					stake: '0',
+				});
+				planet.active = false;
 				// console.log(`planet exited: ${args.location}`);
+			} else if ('eventName' in logEvent && logEvent.eventName === 'FleetSent' && 'args' in logEvent) {
+				const args = logEvent.args as any;
+				const playerAddress = args.fleetSender;
+				this.state.totalSpaceshipsSent[playerAddress] =
+					(this.state.totalSpaceshipsSent[playerAddress] || 0) + args.quantity;
+			} else if ('eventName' in logEvent && logEvent.eventName === 'FleetArrived' && 'args' in logEvent) {
+				const args = logEvent.args as any;
+				const playerAddress = args.fleetOwner;
+				const planet = this.state.planets[args.destination];
+				if (args.won && planet?.active) {
+					this.state.totalStakeCaptured[playerAddress] = (
+						BigInt(this.state.totalStakeCaptured[playerAddress] || '0') + BigInt(planet.stake)
+					).toString();
+				}
 			}
 			await unlessActionAlreadyRecorded(this.db, this.questGroupID, actionID, async () => {
 				// TODO typesafe
