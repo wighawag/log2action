@@ -72,7 +72,9 @@ async function main() {
 	}
 
 	function processQueueAndTransactions() {
+		console.log(`-----------------------------------------------------------------------------------------`);
 		app.fetch(new Request('http://localhost/internal/process/ConquestTestQuests'));
+		console.log(`-----------------------------------------------------------------------------------------`);
 	}
 
 	let runningInterval;
