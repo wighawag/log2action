@@ -676,9 +676,11 @@ type MyABI = typeof abi;
 
 type State = {
 	planets: {[location: string]: {active: boolean; stake: string}};
-	totalStaked: {[player: string]: string};
-	totalSpaceshipsSent: {[player: string]: number};
-	totalStakeCaptured: {[player: string]: string};
+	totalStaked: {[player: string]: {current: string; previous: string}};
+	totalSpaceshipsSent: {[player: string]: {current: number; previous: number}};
+	totalPlanetsStaked: {[player: string]: {current: number; previous: number}};
+	totalStakeCaptured: {[player: string]: {current: string; previous: string}};
+	totalPlanetsCaptured: {[player: string]: {current: number; previous: number}};
 };
 
 class Processor implements EventProcessor<MyABI, {}> {
@@ -692,7 +694,14 @@ class Processor implements EventProcessor<MyABI, {}> {
 		public db: Storage,
 	) {
 		this.gg = new GG(env);
-		this.state = {planets: {}, totalStaked: {}, totalSpaceshipsSent: {}, totalStakeCaptured: {}};
+		this.state = {
+			planets: {},
+			totalStaked: {},
+			totalSpaceshipsSent: {},
+			totalStakeCaptured: {},
+			totalPlanetsCaptured: {},
+			totalPlanetsStaked: {},
+		};
 	}
 
 	getVersionHash(): string {
@@ -706,7 +715,17 @@ class Processor implements EventProcessor<MyABI, {}> {
 		const lastSync = undefined; //await this.db.loadLastSync(this.questGroupID);
 
 		return lastSync
-			? {state: {planets: {}, totalStaked: {}, totalSpaceshipsSent: {}, totalStakeCaptured: {}}, lastSync}
+			? {
+					state: {
+						planets: {},
+						totalStaked: {},
+						totalSpaceshipsSent: {},
+						totalStakeCaptured: {},
+						totalPlanetsCaptured: {},
+						totalPlanetsStaked: {},
+					},
+					lastSync,
+				}
 			: undefined;
 	}
 
@@ -748,11 +767,25 @@ class Processor implements EventProcessor<MyABI, {}> {
 			const actionID = `${logEvent.transactionHash}_${logEvent.logIndex}`;
 			if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
 				const args = logEvent.args as any;
-				const playerAddress = args.acquirer;
-				this.state.totalStaked[playerAddress] = (
-					BigInt(this.state.totalStaked[playerAddress] || '0') + BigInt(args.stake)
-				).toString();
-				const planet = (this.state.planets[args.location] = this.state.planets[args.location] || {
+				const playerAddress = args.acquirer.toLowerCase();
+				const planetLocation = args.location.toLowerCase();
+				const totalStaked = (this.state.totalStaked[playerAddress] = this.state.totalStaked[playerAddress] || {
+					current: '0',
+					previous: '0',
+				});
+				totalStaked.previous = totalStaked.current;
+				totalStaked.current = (BigInt(totalStaked.current || '0') + BigInt(args.stake)).toString();
+
+				const totalPlanetsStaked = (this.state.totalPlanetsStaked[playerAddress] = this.state.totalPlanetsStaked[
+					playerAddress
+				] || {
+					current: 0,
+					previous: 0,
+				});
+				totalPlanetsStaked.previous = totalPlanetsStaked.current;
+				totalPlanetsStaked.current = totalPlanetsStaked.current + 1;
+
+				const planet = (this.state.planets[planetLocation] = this.state.planets[planetLocation] || {
 					active: false,
 					stake: '0',
 				});
@@ -760,49 +793,93 @@ class Processor implements EventProcessor<MyABI, {}> {
 				planet.stake = BigInt(args.stake).toString();
 			} else if ('eventName' in logEvent && logEvent.eventName === 'ExitComplete' && 'args' in logEvent) {
 				const args = logEvent.args as any;
-				const planet = (this.state.planets[args.location] = this.state.planets[args.location] || {
+				const planetLocation = args.location.toLowerCase();
+				const planet = (this.state.planets[planetLocation] = this.state.planets[planetLocation] || {
 					active: false,
 					stake: '0',
 				});
 				planet.active = false;
-				// console.log(`planet exited: ${args.location}`);
+				// console.log(`planet exited: ${planetLocation}`);
 			} else if ('eventName' in logEvent && logEvent.eventName === 'FleetSent' && 'args' in logEvent) {
 				const args = logEvent.args as any;
-				const playerAddress = args.fleetSender;
-				this.state.totalSpaceshipsSent[playerAddress] =
-					(this.state.totalSpaceshipsSent[playerAddress] || 0) + args.quantity;
+				const playerAddress = args.fleetSender.toLowerCase();
+				const totalSpaceshipsSent = (this.state.totalSpaceshipsSent[playerAddress] = this.state.totalSpaceshipsSent[
+					playerAddress
+				] || {
+					current: 0,
+					previous: 0,
+				});
+				totalSpaceshipsSent.previous = totalSpaceshipsSent.current;
+				totalSpaceshipsSent.current = totalSpaceshipsSent.current + args.quantity;
 			} else if ('eventName' in logEvent && logEvent.eventName === 'FleetArrived' && 'args' in logEvent) {
 				const args = logEvent.args as any;
-				const playerAddress = args.fleetOwner;
-				const planet = this.state.planets[args.destination];
+				const playerAddress = args.fleetOwner.toLowerCase();
+				const destination = args.destination.toLowerCase();
+				const planet = this.state.planets[destination];
 				if (args.won && planet?.active) {
-					this.state.totalStakeCaptured[playerAddress] = (
-						BigInt(this.state.totalStakeCaptured[playerAddress] || '0') + BigInt(planet.stake)
-					).toString();
+					const totalCaptured = (this.state.totalStakeCaptured[playerAddress] = this.state.totalStakeCaptured[
+						playerAddress
+					] || {
+						current: '0',
+						previous: '0',
+					});
+					totalCaptured.previous = totalCaptured.current;
+					totalCaptured.current = (BigInt(totalCaptured.current || '0') + BigInt(planet.stake)).toString();
+
+					const totalPlanetsCaptured = (this.state.totalPlanetsCaptured[playerAddress] = this.state
+						.totalPlanetsCaptured[playerAddress] || {
+						current: 0,
+						previous: 0,
+					});
+					totalPlanetsCaptured.previous = totalPlanetsCaptured.current;
+					totalPlanetsCaptured.current = totalPlanetsCaptured.current + 1;
 				}
 			}
 			await unlessActionAlreadyRecorded(this.db, this.questGroupID, actionID, async () => {
 				// TODO typesafe
 				if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
 					const args = logEvent.args as any;
-					const playerAddress = args.acquirer;
-					return this.testAndFulfillQuest(playerAddress, ['Kill zombie']);
+					const playerAddress = args.acquirer.toLowerCase();
+					const actionsTriggered: string[] = ['1 Planet Staked'];
+
+					if (actionsTriggered.length > 0) {
+						return this.testAndFulfillQuest(playerAddress, actionsTriggered);
+					}
+					return false;
+				} else if ('eventName' in logEvent && logEvent.eventName === 'FleetSent' && 'args' in logEvent) {
+					const args = logEvent.args as any;
+					const playerAddress = args.fleetSender.toLowerCase();
+					const totalSpaceshipsSent = this.state.totalSpaceshipsSent[playerAddress];
+					const actionsTriggered: string[] = [];
+					if (totalSpaceshipsSent.current < 100_000 && totalSpaceshipsSent.current >= 100_000) {
+						actionsTriggered.push('100000 spaceships sent');
+					}
+					if (totalSpaceshipsSent.current < 1_000_000 && totalSpaceshipsSent.current >= 1_000_000) {
+						actionsTriggered.push('1000000 spaceships sent');
+					}
+					if (totalSpaceshipsSent.current < 10_000_000 && totalSpaceshipsSent.current >= 10_000_000) {
+						actionsTriggered.push('10000000 spaceships sent');
+					}
+					if (actionsTriggered.length > 0) {
+						return this.testAndFulfillQuest(playerAddress, actionsTriggered);
+					}
+					return false;
+				} else if ('eventName' in logEvent && logEvent.eventName === 'FleetArrived' && 'args' in logEvent) {
+					const args = logEvent.args as any;
+					const playerAddress = args.fleetOwner.toLowerCase();
+					const destination = args.destination.toLowerCase();
+					const planet = this.state.planets[destination];
+					if (args.won && planet?.active) {
+						const actionsTriggered: string[] = ['1 Planet Captured'];
+
+						if (actionsTriggered.length > 0) {
+							return this.testAndFulfillQuest(playerAddress, actionsTriggered);
+						}
+					} else {
+						// return this.testAndFulfillQuest(playerAddress, [`Fleet Conquered ab inactive planet ${args.destination}`]);
+						return false; // TODO true if we want to block
+					}
 				}
-				// else if ('eventName' in logEvent && logEvent.eventName === 'FleetSent' && 'args' in logEvent) {
-				// 	const args = logEvent.args as any;
-				// 	const playerAddress = args.fleetSender;
-				// 	return this.testAndFulfillQuest(playerAddress, ['Kill Zombie']);
-				// } else if ('eventName' in logEvent && logEvent.eventName === 'FleetArrived' && 'args' in logEvent) {
-				// 	const args = logEvent.args as any;
-				// 	const playerAddress = args.fleetOwner;
-				// 	const planet = this.state.planets[args.destination];
-				// 	if (args.won && planet?.active) {
-				// 		return this.testAndFulfillQuest(playerAddress, [`Kill Zombie`]);
-				// 	} else {
-				// 		// return this.testAndFulfillQuest(playerAddress, [`Fleet Conquered ab inactive planet ${args.destination}`]);
-				// 		return false; // TODO true if we want to block
-				// 	}
-				// }
 				return false;
 			});
 		}
