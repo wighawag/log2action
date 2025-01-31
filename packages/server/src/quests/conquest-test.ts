@@ -852,13 +852,13 @@ class Processor implements EventProcessor<MyABI, {}> {
 					const totalSpaceshipsSent = this.state.totalSpaceshipsSent[playerAddress];
 					const actionsTriggered: string[] = [];
 					if (totalSpaceshipsSent.current < 100_000 && totalSpaceshipsSent.current >= 100_000) {
-						actionsTriggered.push('100000 spaceships sent');
+						actionsTriggered.push('100,000 spaceships sent');
 					}
 					if (totalSpaceshipsSent.current < 1_000_000 && totalSpaceshipsSent.current >= 1_000_000) {
-						actionsTriggered.push('1000000 spaceships sent');
+						actionsTriggered.push('1,000,000 spaceships sent');
 					}
 					if (totalSpaceshipsSent.current < 10_000_000 && totalSpaceshipsSent.current >= 10_000_000) {
-						actionsTriggered.push('10000000 spaceships sent');
+						actionsTriggered.push('10,000,000 spaceships sent');
 					}
 					if (actionsTriggered.length > 0) {
 						return this.testAndFulfillQuest(playerAddress, actionsTriggered);
