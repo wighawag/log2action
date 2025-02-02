@@ -205,7 +205,6 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 					if (actionsTriggered.length > 0) {
 						return this.testAndFulfillQuest(playerAddress, actionsTriggered);
 					}
-					return false;
 				} else if ('eventName' in logEvent && logEvent.eventName === 'FleetSent' && 'args' in logEvent) {
 					const args = logEvent.args as any;
 					const playerAddress = args.fleetSender.toLowerCase();
@@ -238,7 +237,6 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 					if (actionsTriggered.length > 0) {
 						return this.testAndFulfillQuest(playerAddress, actionsTriggered);
 					}
-					return false;
 				} else if ('eventName' in logEvent && logEvent.eventName === 'FleetArrived' && 'args' in logEvent) {
 					const args = logEvent.args as any;
 					const playerAddress = args.fleetOwner.toLowerCase();
@@ -250,9 +248,6 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 						if (actionsTriggered.length > 0) {
 							return this.testAndFulfillQuest(playerAddress, actionsTriggered);
 						}
-					} else {
-						// return this.testAndFulfillQuest(playerAddress, [`Fleet Conquered ab inactive planet ${args.destination}`]);
-						return false; // TODO true if we want to block
 					}
 				} else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaSubscribed' && 'args' in logEvent) {
 					const args = logEvent.args as any;
