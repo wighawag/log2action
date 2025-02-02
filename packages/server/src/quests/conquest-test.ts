@@ -791,7 +791,16 @@ class Processor implements EventProcessor<MyABI, {}> {
 	async process(eventStream: LogEvent<MyABI>[], lastSync: LastSync<MyABI>): Promise<{}> {
 		for (const logEvent of eventStream) {
 			const actionID = `${logEvent.transactionHash}_${logEvent.logIndex}`;
-			if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
+			if ('eventName' in logEvent && logEvent.eventName === 'ExitComplete' && 'args' in logEvent) {
+				const args = logEvent.args as any;
+				const planetLocation = args.location.toLowerCase();
+				const planet = (this.state.planets[planetLocation] = this.state.planets[planetLocation] || {
+					active: false,
+					stake: '0',
+				});
+				planet.active = false;
+				// console.log(`planet exited: ${planetLocation}`);
+			} else if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
 				const args = logEvent.args as any;
 				const playerAddress = args.acquirer.toLowerCase();
 				const planetLocation = args.location.toLowerCase();
@@ -817,15 +826,6 @@ class Processor implements EventProcessor<MyABI, {}> {
 				});
 				planet.active = true;
 				planet.stake = BigInt(args.stake).toString();
-			} else if ('eventName' in logEvent && logEvent.eventName === 'ExitComplete' && 'args' in logEvent) {
-				const args = logEvent.args as any;
-				const planetLocation = args.location.toLowerCase();
-				const planet = (this.state.planets[planetLocation] = this.state.planets[planetLocation] || {
-					active: false,
-					stake: '0',
-				});
-				planet.active = false;
-				// console.log(`planet exited: ${planetLocation}`);
 			} else if ('eventName' in logEvent && logEvent.eventName === 'FleetSent' && 'args' in logEvent) {
 				const args = logEvent.args as any;
 				const playerAddress = args.fleetSender.toLowerCase();
@@ -843,14 +843,14 @@ class Processor implements EventProcessor<MyABI, {}> {
 				const destination = args.destination.toLowerCase();
 				const planet = this.state.planets[destination];
 				if (args.won && planet?.active) {
-					const totalCaptured = (this.state.totalStakeCaptured[playerAddress] = this.state.totalStakeCaptured[
+					const totalStakeCaptured = (this.state.totalStakeCaptured[playerAddress] = this.state.totalStakeCaptured[
 						playerAddress
 					] || {
 						current: '0',
 						previous: '0',
 					});
-					totalCaptured.previous = totalCaptured.current;
-					totalCaptured.current = (BigInt(totalCaptured.current || '0') + BigInt(planet.stake)).toString();
+					totalStakeCaptured.previous = totalStakeCaptured.current;
+					totalStakeCaptured.current = (BigInt(totalStakeCaptured.current || '0') + BigInt(planet.stake)).toString();
 
 					const totalPlanetsCaptured = (this.state.totalPlanetsCaptured[playerAddress] = this.state
 						.totalPlanetsCaptured[playerAddress] || {
@@ -903,20 +903,29 @@ class Processor implements EventProcessor<MyABI, {}> {
 					const totalSpaceshipsSent = this.state.totalSpaceshipsSent[playerAddress];
 					const actionsTriggered: string[] = [];
 
-					const thresholds = [1_000_000, 10_000_000];
-					const messages = ['1,000,000 spaceships sent', '10,000,000 spaceships sent'];
+					const thresholdData = [
+						{threshold: 100_000, maxTrigger: 1_000_000, action: '100,000 spaceships sent'},
+						{threshold: 1_000_000, maxTrigger: 10_000_000, action: '1,000,000 spaceships sent'},
+						{threshold: 10_000_000, maxTrigger: 100_000_000, action: '10,000,000 spaceships sent'},
+					];
 
-					thresholds.forEach((threshold, index) => {
-						const previousCrossings = Math.floor(totalSpaceshipsSent.previous / threshold);
-						const currentCrossings = Math.floor(totalSpaceshipsSent.current / threshold);
+					for (const {threshold, maxTrigger, action} of thresholdData) {
+						const previousCrossings = Math.min(
+							Math.floor(totalSpaceshipsSent.previous / threshold),
+							Math.floor(maxTrigger / threshold),
+						);
+						const currentCrossings = Math.min(
+							Math.floor(totalSpaceshipsSent.current / threshold),
+							Math.floor(maxTrigger / threshold),
+						);
 
 						if (currentCrossings > previousCrossings) {
 							const timesCrossed = currentCrossings - previousCrossings;
 							for (let i = 0; i < timesCrossed; i++) {
-								actionsTriggered.push(messages[index]);
+								actionsTriggered.push(action);
 							}
 						}
-					});
+					}
 					if (actionsTriggered.length > 0) {
 						return this.testAndFulfillQuest(playerAddress, actionsTriggered);
 					}
@@ -942,20 +951,44 @@ class Processor implements EventProcessor<MyABI, {}> {
 					const actionsTriggered: string[] = [];
 					const totalContributionToYakuza = this.state.totalContributionToYakuza[playerAddress];
 
-					const thresholds = [BigInt('2000000000000000000')];
-					const messages = ['Subscribed to Yakuza for 2$'];
+					const thresholdData = [
+						{
+							threshold: BigInt('1000000000000000000'),
+							maxTrigger: BigInt('2000000000000000000'),
+							action: 'Subscribed to Yakuza for 1$',
+						},
+						{
+							threshold: BigInt('2000000000000000000'),
+							maxTrigger: BigInt('6000000000000000000'),
+							action: 'Subscribed to Yakuza for 2$',
+						},
+						{
+							threshold: BigInt('6000000000000000000'),
+							maxTrigger: BigInt('12000000000000000000'),
+							action: 'Subscribed to Yakuza for 6$',
+						},
+						{
+							threshold: BigInt('12000000000000000000'),
+							maxTrigger: BigInt('24000000000000000000'),
+							action: 'Subscribed to Yakuza for 12$',
+						},
+					];
 
-					thresholds.forEach((threshold, index) => {
-						const previousCrossings = BigInt(totalContributionToYakuza.previous) / threshold;
-						const currentCrossings = BigInt(totalContributionToYakuza.current) / threshold;
+					for (const {threshold, maxTrigger, action} of thresholdData) {
+						const previousCrossings = BigInt(
+							Math.min(Number(BigInt(totalContributionToYakuza.previous) / threshold), Number(maxTrigger)),
+						);
+						const currentCrossings = BigInt(
+							Math.min(Number(BigInt(totalContributionToYakuza.current) / threshold), Number(maxTrigger)),
+						);
 
 						if (currentCrossings > previousCrossings) {
 							const timesCrossed = currentCrossings - previousCrossings;
 							for (let i = 0n; i < timesCrossed; i++) {
-								actionsTriggered.push(messages[index]);
+								actionsTriggered.push(action);
 							}
 						}
-					});
+					}
 					if (actionsTriggered.length > 0) {
 						return this.testAndFulfillQuest(playerAddress, actionsTriggered);
 					}
