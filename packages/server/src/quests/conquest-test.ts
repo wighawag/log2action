@@ -1,9 +1,25 @@
-import {EventProcessor, IndexingSource, LastSync, LogEvent, UsedStreamConfig} from 'ethereum-indexer';
+import {Abi, EventProcessor, IndexingSource, LastSync, LogEvent, UsedStreamConfig} from 'ethereum-indexer';
 import {unlessActionAlreadyRecorded} from './utilts.js';
 import {GG} from '../gg/index.js';
 import {Env} from '../env.js';
 
-const abi = [
+function mergeABIs(abi1: Abi, abi2: Abi): Abi {
+	const namesUsed: {[name: string]: boolean} = {};
+	const newABI = [];
+	for (const fragment of abi1) {
+		namesUsed[(fragment as any).name] = true;
+		newABI.push(fragment);
+	}
+	for (const fragment of abi2) {
+		if (!namesUsed[(fragment as any).name]) {
+			namesUsed[(fragment as any).name] = true;
+			newABI.push(fragment);
+		}
+	}
+	return newABI;
+}
+
+const conquestABI: Abi = [
 	{
 		inputs: [
 			{
@@ -670,7 +686,11 @@ const abi = [
 		name: 'TravelingUpkeepRefund',
 		type: 'event',
 	},
-] as const;
+];
+
+const yakuzaABI: Abi = [];
+
+const abi = mergeABIs(conquestABI, yakuzaABI);
 
 type MyABI = typeof abi;
 
@@ -681,6 +701,8 @@ type State = {
 	totalPlanetsStaked: {[player: string]: {current: number; previous: number}};
 	totalStakeCaptured: {[player: string]: {current: string; previous: string}};
 	totalPlanetsCaptured: {[player: string]: {current: number; previous: number}};
+	totalContributionToYakuza: {[player: string]: {current: string; previous: string}};
+	fleetRevengesClaimed: {[fleet: string]: {current: boolean; previous: boolean}};
 };
 
 class Processor implements EventProcessor<MyABI, {}> {
@@ -701,6 +723,8 @@ class Processor implements EventProcessor<MyABI, {}> {
 			totalStakeCaptured: {},
 			totalPlanetsCaptured: {},
 			totalPlanetsStaked: {},
+			totalContributionToYakuza: {},
+			fleetRevengesClaimed: {},
 		};
 	}
 
@@ -723,6 +747,8 @@ class Processor implements EventProcessor<MyABI, {}> {
 						totalStakeCaptured: {},
 						totalPlanetsCaptured: {},
 						totalPlanetsStaked: {},
+						totalContributionToYakuza: {},
+						fleetRevengesClaimed: {},
 					},
 					lastSync,
 				}
@@ -834,7 +860,32 @@ class Processor implements EventProcessor<MyABI, {}> {
 					totalPlanetsCaptured.previous = totalPlanetsCaptured.current;
 					totalPlanetsCaptured.current = totalPlanetsCaptured.current + 1;
 				}
+			} else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaSubscribed' && 'args' in logEvent) {
+				const args = logEvent.args as any;
+				const playerAddress = args.subscriber.toLowerCase();
+				const contribution = args.contribution;
+				const totalContributionToYakuza = (this.state.totalContributionToYakuza[playerAddress] = this.state
+					.totalContributionToYakuza[playerAddress] || {
+					current: '0',
+					previous: '0',
+				});
+				totalContributionToYakuza.previous = totalContributionToYakuza.current;
+				totalContributionToYakuza.current = (
+					BigInt(totalContributionToYakuza.current || '0') + BigInt(contribution)
+				).toString();
+			} else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaClaimed' && 'args' in logEvent) {
+				const args = logEvent.args as any;
+				const fleetId = args.fleetId.toLowerCase();
+				const fleetRevengesClaimed = (this.state.fleetRevengesClaimed[fleetId] = this.state.fleetRevengesClaimed[
+					fleetId
+				] || {
+					current: false,
+					previous: false,
+				});
+				fleetRevengesClaimed.previous = fleetRevengesClaimed.current;
+				fleetRevengesClaimed.current = true;
 			}
+
 			await unlessActionAlreadyRecorded(this.db, this.questGroupID, actionID, async () => {
 				// TODO typesafe
 				if ('eventName' in logEvent && logEvent.eventName === 'PlanetStake' && 'args' in logEvent) {
@@ -851,15 +902,21 @@ class Processor implements EventProcessor<MyABI, {}> {
 					const playerAddress = args.fleetSender.toLowerCase();
 					const totalSpaceshipsSent = this.state.totalSpaceshipsSent[playerAddress];
 					const actionsTriggered: string[] = [];
-					if (totalSpaceshipsSent.current < 100_000 && totalSpaceshipsSent.current >= 100_000) {
-						actionsTriggered.push('100,000 spaceships sent');
-					}
-					if (totalSpaceshipsSent.current < 1_000_000 && totalSpaceshipsSent.current >= 1_000_000) {
-						actionsTriggered.push('1,000,000 spaceships sent');
-					}
-					if (totalSpaceshipsSent.current < 10_000_000 && totalSpaceshipsSent.current >= 10_000_000) {
-						actionsTriggered.push('10,000,000 spaceships sent');
-					}
+
+					const thresholds = [1_000_000, 10_000_000];
+					const messages = ['1,000,000 spaceships sent', '10,000,000 spaceships sent'];
+
+					thresholds.forEach((threshold, index) => {
+						const previousCrossings = Math.floor(totalSpaceshipsSent.previous / threshold);
+						const currentCrossings = Math.floor(totalSpaceshipsSent.current / threshold);
+
+						if (currentCrossings > previousCrossings) {
+							const timesCrossed = currentCrossings - previousCrossings;
+							for (let i = 0; i < timesCrossed; i++) {
+								actionsTriggered.push(messages[index]);
+							}
+						}
+					});
 					if (actionsTriggered.length > 0) {
 						return this.testAndFulfillQuest(playerAddress, actionsTriggered);
 					}
@@ -879,6 +936,42 @@ class Processor implements EventProcessor<MyABI, {}> {
 						// return this.testAndFulfillQuest(playerAddress, [`Fleet Conquered ab inactive planet ${args.destination}`]);
 						return false; // TODO true if we want to block
 					}
+				} else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaSubscribed' && 'args' in logEvent) {
+					const args = logEvent.args as any;
+					const playerAddress = args.subscriber.toLowerCase();
+					const actionsTriggered: string[] = [];
+					const totalContributionToYakuza = this.state.totalContributionToYakuza[playerAddress];
+
+					const thresholds = [BigInt('2000000000000000000')];
+					const messages = ['Subscribed to Yakuza for 2$'];
+
+					thresholds.forEach((threshold, index) => {
+						const previousCrossings = BigInt(totalContributionToYakuza.previous) / threshold;
+						const currentCrossings = BigInt(totalContributionToYakuza.current) / threshold;
+
+						if (currentCrossings > previousCrossings) {
+							const timesCrossed = currentCrossings - previousCrossings;
+							for (let i = 0n; i < timesCrossed; i++) {
+								actionsTriggered.push(messages[index]);
+							}
+						}
+					});
+					if (actionsTriggered.length > 0) {
+						return this.testAndFulfillQuest(playerAddress, actionsTriggered);
+					}
+				} else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaClaimed' && 'args' in logEvent) {
+					const args = logEvent.args as any;
+					const playerAddress = args.sender.toLowerCase();
+					const fleetId = args.fleetId.toLowerCase();
+
+					const actionsTriggered: string[] = [];
+					const fleetRevengesClaimed = this.state.fleetRevengesClaimed[fleetId];
+					if (!fleetRevengesClaimed.previous && fleetRevengesClaimed.current) {
+						actionsTriggered.push('1 Revenge Claimed');
+					}
+					if (actionsTriggered.length > 0) {
+						return this.testAndFulfillQuest(playerAddress, actionsTriggered);
+					}
 				}
 				return false;
 			});
@@ -894,10 +987,15 @@ export const ConquestTestQuests = {
 	chainId: '100',
 	contracts: [
 		{
-			abi,
+			abi: conquestABI,
 			startBlock: 38273694,
 			address: '0xEd16fDb2191C56094911675DE634c1af36f8e9AB',
 		},
+		// {
+		// 	abi: yakuzaABI,
+		// 	startBlock: 38273694,
+		// 	address: '0xEd16fDb2191C56094911675DE634c1af36f8e9AB',
+		// },
 	],
 	processorFactory: (env: Env, id: string, source: IndexingSource<MyABI>, db: Storage) =>
 		new Processor(env, id, source, db),
