@@ -89,7 +89,7 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 			});
 			console.log(result);
 			const {status} = result;
-			console.log({status, playerAddress});
+			console.log({status, playerAddress, actions});
 			return status === 'success';
 		} else {
 			console.log(`do not apply`);
@@ -169,31 +169,32 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 					totalPlanetsCaptured.previous = totalPlanetsCaptured.current;
 					totalPlanetsCaptured.current = totalPlanetsCaptured.current + 1;
 				}
-			} else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaSubscribed' && 'args' in logEvent) {
-				const args = logEvent.args as any;
-				const playerAddress = args.subscriber.toLowerCase();
-				const contribution = args.contribution;
-				const totalContributionToYakuza = (this.state.totalContributionToYakuza[playerAddress] = this.state
-					.totalContributionToYakuza[playerAddress] || {
-					current: '0',
-					previous: '0',
-				});
-				totalContributionToYakuza.previous = totalContributionToYakuza.current;
-				totalContributionToYakuza.current = (
-					BigInt(totalContributionToYakuza.current || '0') + BigInt(contribution)
-				).toString();
-			} else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaClaimed' && 'args' in logEvent) {
-				const args = logEvent.args as any;
-				const fleetId = args.fleetId.toString();
-				const fleetRevengesClaimed = (this.state.fleetRevengesClaimed[fleetId] = this.state.fleetRevengesClaimed[
-					fleetId
-				] || {
-					current: false,
-					previous: false,
-				});
-				fleetRevengesClaimed.previous = fleetRevengesClaimed.current;
-				fleetRevengesClaimed.current = true;
 			}
+			// else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaSubscribed' && 'args' in logEvent) {
+			// 	const args = logEvent.args as any;
+			// 	const playerAddress = args.subscriber.toLowerCase();
+			// 	const contribution = args.contribution;
+			// 	const totalContributionToYakuza = (this.state.totalContributionToYakuza[playerAddress] = this.state
+			// 		.totalContributionToYakuza[playerAddress] || {
+			// 		current: '0',
+			// 		previous: '0',
+			// 	});
+			// 	totalContributionToYakuza.previous = totalContributionToYakuza.current;
+			// 	totalContributionToYakuza.current = (
+			// 		BigInt(totalContributionToYakuza.current || '0') + BigInt(contribution)
+			// 	).toString();
+			// } else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaClaimed' && 'args' in logEvent) {
+			// 	const args = logEvent.args as any;
+			// 	const fleetId = args.fleetId.toString();
+			// 	const fleetRevengesClaimed = (this.state.fleetRevengesClaimed[fleetId] = this.state.fleetRevengesClaimed[
+			// 		fleetId
+			// 	] || {
+			// 		current: false,
+			// 		previous: false,
+			// 	});
+			// 	fleetRevengesClaimed.previous = fleetRevengesClaimed.current;
+			// 	fleetRevengesClaimed.current = true;
+			// }
 
 			await unlessActionAlreadyRecorded(this.db, this.questGroupID, actionID, async () => {
 				// TODO typesafe
@@ -249,67 +250,68 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 							return this.testAndFulfillQuest(playerAddress, actionsTriggered);
 						}
 					}
-				} else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaSubscribed' && 'args' in logEvent) {
-					const args = logEvent.args as any;
-					const playerAddress = args.subscriber.toLowerCase();
-					const actionsTriggered: string[] = [];
-					const totalContributionToYakuza = this.state.totalContributionToYakuza[playerAddress];
-
-					const thresholdData = [
-						{
-							threshold: BigInt('1000000000000000000'),
-							maxTrigger: BigInt('2000000000000000000'),
-							action: 'Subscribed to Yakuza for 1$',
-						},
-						{
-							threshold: BigInt('2000000000000000000'),
-							maxTrigger: BigInt('6000000000000000000'),
-							action: 'Subscribed to Yakuza for 2$',
-						},
-						{
-							threshold: BigInt('6000000000000000000'),
-							maxTrigger: BigInt('12000000000000000000'),
-							action: 'Subscribed to Yakuza for 6$',
-						},
-						{
-							threshold: BigInt('12000000000000000000'),
-							maxTrigger: BigInt('24000000000000000000'),
-							action: 'Subscribed to Yakuza for 12$',
-						},
-					];
-
-					for (const {threshold, maxTrigger, action} of thresholdData) {
-						const previousCrossings = BigInt(
-							Math.min(Number(BigInt(totalContributionToYakuza.previous) / threshold), Number(maxTrigger)),
-						);
-						const currentCrossings = BigInt(
-							Math.min(Number(BigInt(totalContributionToYakuza.current) / threshold), Number(maxTrigger)),
-						);
-
-						if (currentCrossings > previousCrossings) {
-							const timesCrossed = currentCrossings - previousCrossings;
-							for (let i = 0n; i < timesCrossed; i++) {
-								actionsTriggered.push(action);
-							}
-						}
-					}
-					if (actionsTriggered.length > 0) {
-						return this.testAndFulfillQuest(playerAddress, actionsTriggered);
-					}
-				} else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaClaimed' && 'args' in logEvent) {
-					const args = logEvent.args as any;
-					const playerAddress = args.sender.toLowerCase();
-					const fleetId = args.fleetId.toString();
-
-					const actionsTriggered: string[] = [];
-					const fleetRevengesClaimed = this.state.fleetRevengesClaimed[fleetId];
-					if (!fleetRevengesClaimed.previous && fleetRevengesClaimed.current) {
-						actionsTriggered.push('1 Revenge Claimed');
-					}
-					if (actionsTriggered.length > 0) {
-						return this.testAndFulfillQuest(playerAddress, actionsTriggered);
-					}
 				}
+				// else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaSubscribed' && 'args' in logEvent) {
+				// 	const args = logEvent.args as any;
+				// 	const playerAddress = args.subscriber.toLowerCase();
+				// 	const actionsTriggered: string[] = [];
+				// 	const totalContributionToYakuza = this.state.totalContributionToYakuza[playerAddress];
+
+				// 	const thresholdData = [
+				// 		{
+				// 			threshold: BigInt('1000000000000000000'),
+				// 			maxTrigger: BigInt('2000000000000000000'),
+				// 			action: 'Subscribed to Yakuza for 1$',
+				// 		},
+				// 		{
+				// 			threshold: BigInt('2000000000000000000'),
+				// 			maxTrigger: BigInt('6000000000000000000'),
+				// 			action: 'Subscribed to Yakuza for 2$',
+				// 		},
+				// 		{
+				// 			threshold: BigInt('6000000000000000000'),
+				// 			maxTrigger: BigInt('12000000000000000000'),
+				// 			action: 'Subscribed to Yakuza for 6$',
+				// 		},
+				// 		{
+				// 			threshold: BigInt('12000000000000000000'),
+				// 			maxTrigger: BigInt('24000000000000000000'),
+				// 			action: 'Subscribed to Yakuza for 12$',
+				// 		},
+				// 	];
+
+				// 	for (const {threshold, maxTrigger, action} of thresholdData) {
+				// 		const previousCrossings = BigInt(
+				// 			Math.min(Number(BigInt(totalContributionToYakuza.previous) / threshold), Number(maxTrigger)),
+				// 		);
+				// 		const currentCrossings = BigInt(
+				// 			Math.min(Number(BigInt(totalContributionToYakuza.current) / threshold), Number(maxTrigger)),
+				// 		);
+
+				// 		if (currentCrossings > previousCrossings) {
+				// 			const timesCrossed = currentCrossings - previousCrossings;
+				// 			for (let i = 0n; i < timesCrossed; i++) {
+				// 				actionsTriggered.push(action);
+				// 			}
+				// 		}
+				// 	}
+				// 	if (actionsTriggered.length > 0) {
+				// 		return this.testAndFulfillQuest(playerAddress, actionsTriggered);
+				// 	}
+				// } else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaClaimed' && 'args' in logEvent) {
+				// 	const args = logEvent.args as any;
+				// 	const playerAddress = args.sender.toLowerCase();
+				// 	const fleetId = args.fleetId.toString();
+
+				// 	const actionsTriggered: string[] = [];
+				// 	const fleetRevengesClaimed = this.state.fleetRevengesClaimed[fleetId];
+				// 	if (!fleetRevengesClaimed.previous && fleetRevengesClaimed.current) {
+				// 		actionsTriggered.push('1 Revenge Claimed');
+				// 	}
+				// 	if (actionsTriggered.length > 0) {
+				// 		return this.testAndFulfillQuest(playerAddress, actionsTriggered);
+				// 	}
+				// }
 				return false;
 			});
 		}

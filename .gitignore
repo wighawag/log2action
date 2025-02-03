@@ -8,3 +8,6 @@ node_modules/
 !.vscode/*.default
 
 db.sqlite
+tmp.db.sqlite
+
+gg_planets.sh
