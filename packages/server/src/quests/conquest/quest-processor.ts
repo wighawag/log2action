@@ -7,11 +7,16 @@ type State = {
 	planets: {[location: string]: {active: boolean; stake: string}};
 	totalStaked: {[player: string]: {current: string; previous: string}};
 	totalSpaceshipsSent: {[player: string]: {current: number; previous: number}};
+	totalSpaceshipGiftSent: {[player: string]: {current: number; previous: number}};
 	totalPlanetsStaked: {[player: string]: {current: number; previous: number}};
 	totalStakeCaptured: {[player: string]: {current: string; previous: string}};
 	totalPlanetsCaptured: {[player: string]: {current: number; previous: number}};
 	totalContributionToYakuza: {[player: string]: {current: string; previous: string}};
 	fleetRevengesClaimed: {[fleet: string]: {current: boolean; previous: boolean}};
+	alliances: {[id: string]: {[playerAddress: string]: {timestamp: number}}};
+	alliancesFormed: {[player: string]: {current: number; previous: number}};
+	totalDefended: {[player: string]: {current: number; previous: number}};
+	totalSpaceshipsDefended: {[player: string]: {current: number; previous: number}};
 };
 
 export class ConquestProcessor implements EventProcessor<Abi, {}> {
@@ -30,10 +35,15 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 			totalStaked: {},
 			totalSpaceshipsSent: {},
 			totalStakeCaptured: {},
+			totalSpaceshipGiftSent: {},
 			totalPlanetsCaptured: {},
 			totalPlanetsStaked: {},
 			totalContributionToYakuza: {},
 			fleetRevengesClaimed: {},
+			alliances: {},
+			alliancesFormed: {},
+			totalDefended: {},
+			totalSpaceshipsDefended: {},
 		};
 	}
 
@@ -58,6 +68,11 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 						totalPlanetsStaked: {},
 						totalContributionToYakuza: {},
 						fleetRevengesClaimed: {},
+						alliances: {},
+						alliancesFormed: {},
+						totalSpaceshipGiftSent: {},
+						totalDefended: {},
+						totalSpaceshipsDefended: {},
 					},
 					lastSync,
 				}
@@ -98,6 +113,7 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 	}
 
 	async process(eventStream: LogEvent<Abi>[], lastSync: LastSync<Abi>): Promise<{}> {
+		const playerAddedToAlliances: string[] = [];
 		for (const logEvent of eventStream) {
 			const actionID = `${logEvent.transactionHash}_${logEvent.logIndex}`;
 			if ('eventName' in logEvent && logEvent.eventName === 'ExitComplete' && 'args' in logEvent) {
@@ -149,6 +165,7 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 			} else if ('eventName' in logEvent && logEvent.eventName === 'FleetArrived' && 'args' in logEvent) {
 				const args = logEvent.args as any;
 				const playerAddress = args.fleetOwner.toLowerCase();
+				const destinationOwner = args.destinationOwner.toLowerCase();
 				const destination = args.destination.toString();
 				const planet = this.state.planets[destination];
 				if (args.won && planet?.active) {
@@ -168,8 +185,85 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 					});
 					totalPlanetsCaptured.previous = totalPlanetsCaptured.current;
 					totalPlanetsCaptured.current = totalPlanetsCaptured.current + 1;
+				} else if (planet?.active && args.gift) {
+					const totalSpaceshipGiftSent = (this.state.totalSpaceshipGiftSent[playerAddress] = this.state
+						.totalPlanetsCaptured[playerAddress] || {
+						current: 0,
+						previous: 0,
+					});
+					totalSpaceshipGiftSent.previous = totalSpaceshipGiftSent.current;
+					// TODO test
+					totalSpaceshipGiftSent.current =
+						totalSpaceshipGiftSent.current + (args.data.newNumspaceships - args.data.numSpaceshipsAtArrival);
+				} else if (!args.won && planet?.active) {
+					const totalSpaceshipsDefended = (this.state.totalSpaceshipsDefended[destinationOwner] = this.state
+						.totalSpaceshipsDefended[destinationOwner] || {
+						current: 0,
+						previous: 0,
+					});
+					totalSpaceshipsDefended.previous = totalSpaceshipsDefended.current;
+					totalSpaceshipsDefended.current = totalSpaceshipsDefended.current + args.data.fleetLoss;
+
+					const totalDefended = (this.state.totalDefended[destinationOwner] = this.state.totalDefended[
+						destinationOwner
+					] || {
+						current: 0,
+						previous: 0,
+					});
+					totalDefended.previous = totalDefended.current;
+					totalDefended.current = totalDefended.current + 1;
+				}
+			} else if ('eventName' in logEvent && logEvent.eventName === 'AllianceLink' && 'args' in logEvent) {
+				const args = logEvent.args as any;
+				const allianceAddress = args.alliance.toLowerCase();
+				const playerAddress = args.player.toLowerCase();
+				const joining = args.joining;
+
+				const alliance = (this.state.alliances[allianceAddress] = this.state.alliances[allianceAddress] || {});
+				if (joining) {
+					const before = Object.keys(alliance);
+					alliance[playerAddress] = {timestamp: 1}; // TODO timestamp
+					const playersInAlliance = Object.keys(alliance);
+					if (playersInAlliance.length == 2) {
+						// 2nd player joining the alliance
+
+						// we register the first player as having formed an alliance
+						const existing_player = before[0];
+
+						const alliancesFormed = (this.state.alliancesFormed[existing_player] = this.state.alliancesFormed[
+							existing_player
+						] || {
+							current: 0,
+							previous: 0,
+						});
+						alliancesFormed.previous = alliancesFormed.current;
+						alliancesFormed.current = alliancesFormed.current + 1;
+
+						playerAddedToAlliances.push(existing_player);
+						console.log(`2nd player joining the alliance: ${existing_player}`, alliancesFormed);
+					}
+					if (playersInAlliance.length >= 2) {
+						// 2nd or more player
+						const alliancesFormed = (this.state.alliancesFormed[playerAddress] = this.state.alliancesFormed[
+							playerAddress
+						] || {
+							current: 0,
+							previous: 0,
+						});
+						alliancesFormed.previous = alliancesFormed.current;
+						alliancesFormed.current = alliancesFormed.current + 1;
+						playerAddedToAlliances.push(playerAddress);
+
+						console.log(`2nd or more player: ${playerAddress}`, alliancesFormed);
+					}
+				} else {
+					delete alliance[playerAddress];
 				}
 			}
+
+			// Defensive Tactician
+			// Defend your planet from an enemy attack, ensuring it remains under your control.
+
 			// else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaSubscribed' && 'args' in logEvent) {
 			// 	const args = logEvent.args as any;
 			// 	const playerAddress = args.subscriber.toLowerCase();
@@ -249,7 +343,71 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 						if (actionsTriggered.length > 0) {
 							return this.testAndFulfillQuest(playerAddress, actionsTriggered);
 						}
+					} else if (!args.won && planet?.active && !args.gift) {
+						const destinationOwner = args.destinationOwner.toLowerCase();
+						const totalDefended = this.state.totalDefended[destinationOwner];
+						if (totalDefended) {
+							const actionsTriggered: string[] = [];
+
+							const thresholdData = [{threshold: 1, maxTrigger: 10, action: 'defended succesfully'}];
+
+							for (const {threshold, maxTrigger, action} of thresholdData) {
+								const previousCrossings = Math.min(
+									Math.floor(totalDefended.previous / threshold),
+									Math.floor(maxTrigger / threshold),
+								);
+								const currentCrossings = Math.min(
+									Math.floor(totalDefended.current / threshold),
+									Math.floor(maxTrigger / threshold),
+								);
+
+								if (currentCrossings > previousCrossings) {
+									const timesCrossed = currentCrossings - previousCrossings;
+									for (let i = 0; i < timesCrossed; i++) {
+										actionsTriggered.push(action);
+									}
+								}
+							}
+							if (actionsTriggered.length > 0) {
+								return this.testAndFulfillQuest(destinationOwner, actionsTriggered);
+							}
+						}
 					}
+				} else if ('eventName' in logEvent && logEvent.eventName === 'AllianceLink' && 'args' in logEvent) {
+					const args = logEvent.args as any;
+					const playerAddress = args.player.toLowerCase();
+
+					const promises: Promise<boolean>[] = [];
+					const actionBlock = [];
+					for (const address of playerAddedToAlliances) {
+						const actionsTriggered: string[] = [];
+						if (
+							this.state.alliancesFormed[address] &&
+							this.state.alliancesFormed[address].previous == 0 &&
+							this.state.alliancesFormed[address].current == 1
+						) {
+							actionsTriggered.push('1 Alliance Formed');
+						}
+						actionBlock.push({
+							address,
+							actionsTriggered,
+						});
+						if (actionsTriggered.length > 0) {
+							promises.push(this.testAndFulfillQuest(address, actionsTriggered));
+						}
+					}
+					const result = await Promise.all(promises);
+					let passed = false;
+					for (let i = 0; i < result.length; i++) {
+						if (!result[i]) {
+							console.error(`${i} failed`, actionBlock[i]);
+						} else {
+							// TODO
+							// one true and we consider it passed
+							passed = true;
+						}
+					}
+					return passed;
 				}
 				// else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaSubscribed' && 'args' in logEvent) {
 				// 	const args = logEvent.args as any;
