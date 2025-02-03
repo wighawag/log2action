@@ -102,7 +102,6 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 				actions,
 				playerAddress,
 			});
-			console.log(result);
 			const {status} = result;
 			console.log({status, playerAddress, actions});
 			return status === 'success';
@@ -186,15 +185,17 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 					totalPlanetsCaptured.previous = totalPlanetsCaptured.current;
 					totalPlanetsCaptured.current = totalPlanetsCaptured.current + 1;
 				} else if (planet?.active && args.gift) {
-					const totalSpaceshipGiftSent = (this.state.totalSpaceshipGiftSent[playerAddress] = this.state
-						.totalPlanetsCaptured[playerAddress] || {
-						current: 0,
-						previous: 0,
-					});
-					totalSpaceshipGiftSent.previous = totalSpaceshipGiftSent.current;
-					// TODO test
-					totalSpaceshipGiftSent.current =
-						totalSpaceshipGiftSent.current + (args.data.newNumspaceships - args.data.numSpaceshipsAtArrival);
+					if (destinationOwner !== playerAddress) {
+						const totalSpaceshipGiftSent = (this.state.totalSpaceshipGiftSent[playerAddress] = this.state
+							.totalPlanetsCaptured[playerAddress] || {
+							current: 0,
+							previous: 0,
+						});
+						totalSpaceshipGiftSent.previous = totalSpaceshipGiftSent.current;
+						// TODO test
+						totalSpaceshipGiftSent.current =
+							totalSpaceshipGiftSent.current + (args.data.newNumspaceships - args.data.numSpaceshipsAtArrival);
+					}
 				} else if (!args.won && planet?.active) {
 					const totalSpaceshipsDefended = (this.state.totalSpaceshipsDefended[destinationOwner] = this.state
 						.totalSpaceshipsDefended[destinationOwner] || {
@@ -240,7 +241,7 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 						alliancesFormed.current = alliancesFormed.current + 1;
 
 						playerAddedToAlliances.push(existing_player);
-						console.log(`2nd player joining the alliance: ${existing_player}`, alliancesFormed);
+						// console.log(`2nd player joining the alliance: ${existing_player}`, alliancesFormed);
 					}
 					if (playersInAlliance.length >= 2) {
 						// 2nd or more player
@@ -254,7 +255,7 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 						alliancesFormed.current = alliancesFormed.current + 1;
 						playerAddedToAlliances.push(playerAddress);
 
-						console.log(`2nd or more player: ${playerAddress}`, alliancesFormed);
+						// console.log(`2nd or more player: ${playerAddress}`, alliancesFormed);
 					}
 				} else {
 					delete alliance[playerAddress];
@@ -343,13 +344,41 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 						if (actionsTriggered.length > 0) {
 							return this.testAndFulfillQuest(playerAddress, actionsTriggered);
 						}
-					} else if (!args.won && planet?.active && !args.gift) {
+					} else if (args.gift && planet?.active) {
+						const totalSpaceshipGiftSent = this.state.totalSpaceshipGiftSent[playerAddress];
+						if (totalSpaceshipGiftSent) {
+							const actionsTriggered: string[] = [];
+
+							const thresholdData = [{threshold: 100_000, maxTrigger: 1_000_000, action: '100,000 spaceships gifted'}];
+
+							for (const {threshold, maxTrigger, action} of thresholdData) {
+								const previousCrossings = Math.min(
+									Math.floor(totalSpaceshipGiftSent.previous / threshold),
+									Math.floor(maxTrigger / threshold),
+								);
+								const currentCrossings = Math.min(
+									Math.floor(totalSpaceshipGiftSent.current / threshold),
+									Math.floor(maxTrigger / threshold),
+								);
+
+								if (currentCrossings > previousCrossings) {
+									const timesCrossed = currentCrossings - previousCrossings;
+									for (let i = 0; i < timesCrossed; i++) {
+										actionsTriggered.push(action);
+									}
+								}
+							}
+							if (actionsTriggered.length > 0) {
+								return this.testAndFulfillQuest(playerAddress, actionsTriggered);
+							}
+						}
+					} else if (!args.won && planet?.active) {
 						const destinationOwner = args.destinationOwner.toLowerCase();
 						const totalDefended = this.state.totalDefended[destinationOwner];
 						if (totalDefended) {
 							const actionsTriggered: string[] = [];
 
-							const thresholdData = [{threshold: 1, maxTrigger: 10, action: 'defended succesfully'}];
+							const thresholdData = [{threshold: 1, maxTrigger: 10, action: 'Defended Succesfully'}];
 
 							for (const {threshold, maxTrigger, action} of thresholdData) {
 								const previousCrossings = Math.min(
