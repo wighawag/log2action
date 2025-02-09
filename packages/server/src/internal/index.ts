@@ -7,6 +7,7 @@ import type {Abi} from 'ethereum-indexer';
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import type {EIP1193ProviderWithoutEvents} from 'eip-1193';
 import {questsMap} from '../quests/index.js';
+import {keepStreamOnFile} from 'ethereum-indexer-fs';
 
 type Options = {
 	rps?: number;
@@ -48,6 +49,7 @@ export function getInternalAPI(options: ServerOptions) {
 							finality: 12, // TODO
 							doNotFetchUnfinalizedLogs: true,
 						},
+						keepStream: env.USE_FILESYSTEM_STREAM_CACHE == 'true' ? keepStreamOnFile('stream', id) : undefined,
 					},
 				);
 

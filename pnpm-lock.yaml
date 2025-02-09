@@ -62,6 +62,9 @@ importers:
       ethereum-indexer:
         specifier: ^0.6.22
         version: 0.6.22(typescript@5.7.3)(zod@3.24.1)
+      ethereum-indexer-fs:
+        specifier: ^0.7.8
+        version: 0.7.8(typescript@5.7.3)(zod@3.24.1)
       hono:
         specifier: ^4.6.14
         version: 4.6.17
@@ -1646,6 +1649,12 @@ packages:
   estree-walker@3.0.3:
     resolution: {integrity: sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g==}
 
+  ethereum-indexer-fs@0.7.8:
+    resolution: {integrity: sha512-z1STO+JjytyQaJ+yHzgXY0GdUob1RCPGQMhyQ9j6FuOzl/CQ2j25nBH7Mu8vip5KxzcZo0DgX8DgmLqqI6aWBw==}
+
+  ethereum-indexer-utils@0.6.13:
+    resolution: {integrity: sha512-XuFcnpp1llY+1iMAUuaDzBet+Cso754zuROr1Us/W9/r+Fxv0Y8liqa09pOWofO5nL4lI4j8c6fuayokfnIbfQ==}
+
   ethereum-indexer@0.6.22:
     resolution: {integrity: sha512-GjIQ7NeNeZZayctu5gP/i84KYnYti5bwr930LN4Kymk7UM7yi0bWccchkYm0bOBXgdLUSnn6U67I39s+0fz4mg==}
 
@@ -1918,6 +1927,7 @@ packages:
 
   libsql@0.4.7:
     resolution: {integrity: sha512-T9eIRCs6b0J1SHKYIvD8+KCJMcWZ900iZyxdnSCdqxN12Z1ijzT+jY5nrk72Jw4B0HGzms2NgpryArlJqvc3Lw==}
+    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   lines-and-columns@1.2.4:
@@ -3995,6 +4005,21 @@ snapshots:
   estree-walker@3.0.3:
     dependencies:
       '@types/estree': 1.0.6
+
+  ethereum-indexer-fs@0.7.8(typescript@5.7.3)(zod@3.24.1):
+    dependencies:
+      ethereum-indexer: 0.6.22(typescript@5.7.3)(zod@3.24.1)
+      ethereum-indexer-utils: 0.6.13
+      named-logs: 0.2.4
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+      - zod
+
+  ethereum-indexer-utils@0.6.13:
+    dependencies:
+      named-logs: 0.2.4
 
   ethereum-indexer@0.6.22(typescript@5.7.3)(zod@3.24.1):
     dependencies:

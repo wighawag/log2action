@@ -32,7 +32,7 @@ export async function wrapWithLogger(
 
 	const _trackLogger = track(
 		request,
-		'FUZD.cloudflare',
+		'LOG2ACTION',
 		env.LOGFLARE_API_KEY && env.LOGFLARE_SOURCE
 			? logflareReport({ apiKey: env.LOGFLARE_API_KEY, source: env.LOGFLARE_SOURCE })
 			: consoleReporter,
