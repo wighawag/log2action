@@ -29,6 +29,7 @@ async function main() {
 		.usage(`log2action-server-nodejs [--port 2000] [--sql <sql-folder>]`)
 		.description('run log2action-server-nodejs as a node process')
 		.option('-p, --port <port>')
+		.option('-q, --quest <questID>', 'quest ID to auto-process')
 		.option(
 			'-i, --process-interval <interval>',
 			'number of seconds between each processQueue/. set it to zero to cancel it',
@@ -41,6 +42,7 @@ async function main() {
 		port?: string;
 		processInterval?: string;
 		setup: boolean;
+		quest: string;
 	};
 
 	const options: Options = program.opts();
@@ -73,31 +75,35 @@ async function main() {
 		);
 	}
 
-	let promise: Promise<Response> | undefined;
-	async function processQueueAndTransactions() {
-		if (promise) {
-			console.log(`still processing previous call...`);
-			return;
-		}
-		console.log(`-----------------------------------------------------------------------------------------`);
-		try {
-			const res = app.fetch(new Request('http://localhost/internal/process/ConquestTestQuests'));
-			if (res instanceof Promise) {
-				promise = res;
-			} else {
-				promise = Promise.resolve(res);
+	if (options.quest) {
+		let promise: Promise<Response> | undefined;
+		async function processQuest() {
+			if (promise) {
+				console.log(`still processing previous call...`);
+				return;
 			}
-			await promise;
-		} finally {
-			promise = undefined;
-			console.log(`-----------------------------------------------------------------------------------------`);
+			console.log(
+				`----------------------------------- ${options.quest} -----------------------------------------------`,
+			);
+			try {
+				const res = app.fetch(new Request(`http://localhost/internal/process/${options.quest}`));
+				if (res instanceof Promise) {
+					promise = res;
+				} else {
+					promise = Promise.resolve(res);
+				}
+				await promise;
+			} finally {
+				promise = undefined;
+				console.log(`-----------------------------------------------------------------------------------------`);
+			}
 		}
-	}
 
-	let runningInterval;
-	if (processInterval > 0) {
-		processQueueAndTransactions();
-		runningInterval = setInterval(processQueueAndTransactions, processInterval * 1000);
+		let runningInterval;
+		if (processInterval > 0) {
+			processQuest();
+			runningInterval = setInterval(processQuest, processInterval * 1000);
+		}
 	}
 
 	serve({
