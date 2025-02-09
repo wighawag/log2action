@@ -10,10 +10,13 @@ interface ResponseData {
 }
 
 export class GG {
-	constructor(public env: Env) {}
+	constructor(
+		public env: Env,
+		public ggEndPoint: string,
+	) {}
 
 	async fullfillQuest(data: RequestData): Promise<ResponseData> {
-		const url = `${this.env.GG_API_URL}/action-dispatcher/dispatch/public`;
+		const url = `${this.ggEndPoint}/action-dispatcher/dispatch/public`;
 		const headers: HeadersInit = {
 			secret: this.env.GG_SECRET,
 			'Content-Type': 'application/json',
@@ -38,7 +41,7 @@ export class GG {
 	}
 
 	async hasGGProfile(playerAddress: string): Promise<boolean> {
-		const url = `${this.env.GG_API_URL}/auth-v2/player/info/${playerAddress}`;
+		const url = `${this.ggEndPoint}/auth-v2/player/info/${playerAddress}`;
 		const headers: HeadersInit = {
 			secret: this.env.GG_SECRET,
 			accept: 'application/json',

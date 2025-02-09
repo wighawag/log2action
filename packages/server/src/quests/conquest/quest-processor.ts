@@ -28,8 +28,9 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 		public questGroupID: string,
 		public source: IndexingSource<Abi>,
 		public db: Storage,
+		public ggEndPoint: string,
 	) {
-		this.gg = new GG(env);
+		this.gg = new GG(env, ggEndPoint);
 		this.state = {
 			planets: {},
 			totalStaked: {},

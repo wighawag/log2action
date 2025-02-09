@@ -26,5 +26,5 @@ export const ConquestTestQuests = {
 		},
 	],
 	processorFactory: (env: Env, id: string, source: IndexingSource<Abi>, db: Storage) =>
-		new ConquestProcessor(env, id, source, db),
+		new ConquestProcessor(env, id, source, db, 'https://api-staging.gg.xyz/api/v2'),
 } as const;
