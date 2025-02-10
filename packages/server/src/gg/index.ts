@@ -10,6 +10,8 @@ interface ResponseData {
 }
 
 export class GG {
+	public cache: {[player: string]: {registered: boolean; lastCheck: number}} = {};
+
 	constructor(
 		public env: Env,
 		public ggEndPoint: string,
@@ -37,10 +39,21 @@ export class GG {
 		// 	return response.json();
 		// });
 		console.log(`fullfillQuest`, data);
-		return {status: 'error'};
+		return {status: 'success'};
 	}
 
 	async hasGGProfile(playerAddress: string): Promise<boolean> {
+		const timestamp = Math.floor(Date.now() / 1000);
+
+		const fromCache = this.cache[playerAddress];
+		if (fromCache) {
+			if (fromCache.registered) {
+				return true;
+			} else if (fromCache.lastCheck && timestamp < fromCache.lastCheck + 10 * 60) {
+				return fromCache.registered;
+			}
+		}
+
 		const url = `${this.ggEndPoint}/auth-v2/player/info/${playerAddress}`;
 		const headers: HeadersInit = {
 			secret: this.env.GG_SECRET,
@@ -58,6 +71,11 @@ export class GG {
 			}
 			return response.json();
 		});
+
+		this.cache[playerAddress] = {
+			registered: result.hasMinted,
+			lastCheck: timestamp,
+		};
 
 		return result.hasMinted;
 	}

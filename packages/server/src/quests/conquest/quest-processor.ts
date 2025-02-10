@@ -403,42 +403,46 @@ export class ConquestProcessor implements EventProcessor<Abi, {}> {
 							}
 						}
 					}
-				} else if ('eventName' in logEvent && logEvent.eventName === 'AllianceLink' && 'args' in logEvent) {
-					const args = logEvent.args as any;
-					const playerAddress = args.player.toLowerCase();
-
-					const promises: Promise<boolean>[] = [];
-					const actionBlock = [];
-					for (const address of playerAddedToAlliances) {
-						const actionsTriggered: string[] = [];
-						if (
-							this.state.alliancesFormed[address] &&
-							this.state.alliancesFormed[address].previous == 0 &&
-							this.state.alliancesFormed[address].current == 1
-						) {
-							actionsTriggered.push('1 Alliance Formed');
-						}
-						actionBlock.push({
-							address,
-							actionsTriggered,
-						});
-						if (actionsTriggered.length > 0) {
-							promises.push(this.testAndFulfillQuest(address, actionsTriggered));
-						}
-					}
-					const result = await Promise.all(promises);
-					let passed = false;
-					for (let i = 0; i < result.length; i++) {
-						if (!result[i]) {
-							console.error(`${i} failed`, actionBlock[i]);
-						} else {
-							// TODO
-							// one true and we consider it passed
-							passed = true;
-						}
-					}
-					return passed;
 				}
+				// TODO fix issue with different player in same request
+				// if one has no profile and other have, then I cannot record who has passed
+				// one way is to assign a specific id, but the system assign it (tx id/index) before hand
+				// else if ('eventName' in logEvent && logEvent.eventName === 'AllianceLink' && 'args' in logEvent) {
+				// 	const args = logEvent.args as any;
+				// 	const playerAddress = args.player.toLowerCase();
+
+				// 	const promises: Promise<boolean>[] = [];
+				// 	const actionBlock = [];
+				// 	for (const address of playerAddedToAlliances) {
+				// 		const actionsTriggered: string[] = [];
+				// 		if (
+				// 			this.state.alliancesFormed[address] &&
+				// 			this.state.alliancesFormed[address].previous == 0 &&
+				// 			this.state.alliancesFormed[address].current == 1
+				// 		) {
+				// 			actionsTriggered.push('1 Alliance Formed');
+				// 		}
+				// 		actionBlock.push({
+				// 			address,
+				// 			actionsTriggered,
+				// 		});
+				// 		if (actionsTriggered.length > 0) {
+				// 			promises.push(this.testAndFulfillQuest(address, actionsTriggered));
+				// 		}
+				// 	}
+				// 	const result = await Promise.all(promises);
+				// 	let passed = false;
+				// 	for (let i = 0; i < result.length; i++) {
+				// 		if (!result[i]) {
+				// 			console.error(`${i} failed`, actionBlock[i]);
+				// 		} else {
+				// 			// TODO
+				// 			// one true and we consider it passed
+				// 			passed = true;
+				// 		}
+				// 	}
+				// 	return passed;
+				// }
 				// else if ('eventName' in logEvent && logEvent.eventName === 'YakuzaSubscribed' && 'args' in logEvent) {
 				// 	const args = logEvent.args as any;
 				// 	const playerAddress = args.subscriber.toLowerCase();
