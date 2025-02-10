@@ -30,16 +30,16 @@ export class GG {
 			body: JSON.stringify(data),
 		};
 
-		// return fetch(url, requestOptions).then(async (response: Response) => {
-		// 	if (!response.ok) {
-		// 		throw new Error(
-		// 			`HTTP error! status: ${response.status}, ${response.statusText} : ${await response.text()}, ${JSON.stringify(data, null, 2)}`,
-		// 		);
-		// 	}
-		// 	return response.json();
-		// });
-		console.log(`fullfillQuest`, data);
-		return {status: 'success'};
+		return fetch(url, requestOptions).then(async (response: Response) => {
+			if (!response.ok) {
+				throw new Error(
+					`HTTP error! status: ${response.status}, ${response.statusText} : ${await response.text()}, ${JSON.stringify(data, null, 2)}`,
+				);
+			}
+			return response.json();
+		});
+		// console.log(`fullfillQuest`, data);
+		// return {status: 'success'};
 	}
 
 	async hasGGProfile(playerAddress: string): Promise<boolean> {
