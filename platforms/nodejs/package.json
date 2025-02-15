@@ -25,6 +25,7 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "as-soon": "^0.0.11",
+    "forever": "^4.0.3",
     "set-defaults": "^0.0.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
@@ -34,6 +35,7 @@
     "dev": "tsx watch src/cli.ts --port 30042",
     "build": "tsc",
     "build:watch": "as-soon -w src tsc",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "forever-start": "forever dist/cli.js"
   }
 }

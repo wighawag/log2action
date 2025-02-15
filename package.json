@@ -21,7 +21,7 @@
     "---------------------- DEV ----------------------": "",
     "cf-worker:dev": "pnpm --filter log2action-server-cf-worker dev",
     "nodejs:dev": "pnpm --filter log2action-server-nodejs dev",
-    "nodejs": "pnpm build && pnpm --filter log2action-server-nodejs start",
+    "nodejs": "pnpm build && pnpm --filter log2action-server-nodejs forever-start",
     "server:dev": "pnpm --filter log2action-server dev",
     "common:dev": "pnpm --filter log2action-common dev",
     "---------------------- DEPLOY ----------------------": "",

@@ -1,6 +1,9 @@
 # environment variables
 .env*.local
 
+# TODO: remove
+.env
+
 # node modules
 node_modules/
 
