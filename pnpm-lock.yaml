@@ -60,11 +60,11 @@ importers:
         specifier: 0.3.0
         version: 0.3.0
       ethereum-indexer:
-        specifier: ^0.6.22
-        version: 0.6.22(typescript@5.7.3)(zod@3.24.1)
+        specifier: ^0.6.23
+        version: 0.6.23(typescript@5.7.3)(zod@3.24.1)
       ethereum-indexer-fs:
-        specifier: ^0.7.8
-        version: 0.7.8(typescript@5.7.3)(zod@3.24.1)
+        specifier: ^0.7.9
+        version: 0.7.9(typescript@5.7.3)(zod@3.24.1)
       hono:
         specifier: ^4.6.14
         version: 4.6.17
@@ -1895,14 +1895,14 @@ packages:
   estree-walker@3.0.3:
     resolution: {integrity: sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g==}
 
-  ethereum-indexer-fs@0.7.8:
-    resolution: {integrity: sha512-z1STO+JjytyQaJ+yHzgXY0GdUob1RCPGQMhyQ9j6FuOzl/CQ2j25nBH7Mu8vip5KxzcZo0DgX8DgmLqqI6aWBw==}
+  ethereum-indexer-fs@0.7.9:
+    resolution: {integrity: sha512-Bxps2PXEWZ+Ps+XrgBLSDPsS1oiyoTiWYofnSXom20GtOeUPsoHAfb43/nN7Npg2MHViNSYOG9AhhZ9J4dybbg==}
 
   ethereum-indexer-utils@0.6.13:
     resolution: {integrity: sha512-XuFcnpp1llY+1iMAUuaDzBet+Cso754zuROr1Us/W9/r+Fxv0Y8liqa09pOWofO5nL4lI4j8c6fuayokfnIbfQ==}
 
-  ethereum-indexer@0.6.22:
-    resolution: {integrity: sha512-GjIQ7NeNeZZayctu5gP/i84KYnYti5bwr930LN4Kymk7UM7yi0bWccchkYm0bOBXgdLUSnn6U67I39s+0fz4mg==}
+  ethereum-indexer@0.6.23:
+    resolution: {integrity: sha512-TSQ0N2u9xQAgY20kmUWU0eCjoow2b04u25/xsF0v5uJgmPxjCdU8FVFh2KP5yb4u7RPI7VXXxivQPoZ0XkoGeA==}
 
   event-stream@3.3.4:
     resolution: {integrity: sha512-QHpkERcGsR0T7Qm3HNJSyXKEEj8AHNxkY3PK8TS2KJvQ7NiSHe3DDpwVKKtoYprL/AreyzFBeIkBIWChAqn60g==}
@@ -2475,7 +2475,6 @@ packages:
 
   libsql@0.4.7:
     resolution: {integrity: sha512-T9eIRCs6b0J1SHKYIvD8+KCJMcWZ900iZyxdnSCdqxN12Z1ijzT+jY5nrk72Jw4B0HGzms2NgpryArlJqvc3Lw==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   lines-and-columns@1.2.4:
@@ -2705,8 +2704,8 @@ packages:
     resolution: {integrity: sha512-tqa/UMy/CCoYmj+H5qc07qvSL9dqcs/WZENZ1JbtWBlATP+iVOe778gE6MSijnyCnORzDuX6hU+LA4SZ09YjFQ==}
     engines: {node: '>=0.10.0'}
 
-  ohash@1.1.4:
-    resolution: {integrity: sha512-FlDryZAahJmEF3VR3w1KogSEdWX3WhA5GPakFx4J81kEAiHyLMpdLLElS8n8dfNadMgAne/MywcvmogzscVt4g==}
+  ohash@1.1.6:
+    resolution: {integrity: sha512-TBu7PtV8YkAZn0tSxobKY2n2aAQva936lhRrj6957aDaCf9IEtqsKbgMzXE/F/sjqYOwmrukeORHNLe5glk7Cg==}
 
   once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
@@ -5250,9 +5249,9 @@ snapshots:
     dependencies:
       '@types/estree': 1.0.6
 
-  ethereum-indexer-fs@0.7.8(typescript@5.7.3)(zod@3.24.1):
+  ethereum-indexer-fs@0.7.9(typescript@5.7.3)(zod@3.24.1):
     dependencies:
-      ethereum-indexer: 0.6.22(typescript@5.7.3)(zod@3.24.1)
+      ethereum-indexer: 0.6.23(typescript@5.7.3)(zod@3.24.1)
       ethereum-indexer-utils: 0.6.13
       named-logs: 0.2.4
     transitivePeerDependencies:
@@ -5265,7 +5264,7 @@ snapshots:
     dependencies:
       named-logs: 0.2.4
 
-  ethereum-indexer@0.6.22(typescript@5.7.3)(zod@3.24.1):
+  ethereum-indexer@0.6.23(typescript@5.7.3)(zod@3.24.1):
     dependencies:
       named-logs: 0.2.4
       viem: 1.21.4(typescript@5.7.3)(zod@3.24.1)
@@ -6159,7 +6158,7 @@ snapshots:
     dependencies:
       isobject: 3.0.1
 
-  ohash@1.1.4: {}
+  ohash@1.1.6: {}
 
   once@1.4.0:
     dependencies:
@@ -6886,7 +6885,7 @@ snapshots:
     dependencies:
       defu: 6.1.4
       mlly: 1.7.4
-      ohash: 1.1.4
+      ohash: 1.1.6
       pathe: 1.1.2
       ufo: 1.5.4
 
@@ -6894,7 +6893,7 @@ snapshots:
     dependencies:
       defu: 6.1.4
       mlly: 1.7.4
-      ohash: 1.1.4
+      ohash: 1.1.6
       pathe: 1.1.2
       ufo: 1.5.4
 

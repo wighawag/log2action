@@ -48,6 +48,7 @@ export function getInternalAPI(options: ServerOptions) {
 						stream: {
 							finality: 12, // TODO
 							doNotFetchUnfinalizedLogs: true,
+							upToBlock: id === 'Conquest_2025_1_Quests' ? 38876207 : undefined,
 						},
 						keepStream: env.USE_FILESYSTEM_STREAM_CACHE == 'true' ? keepStreamOnFile('stream', id) : undefined,
 					},
